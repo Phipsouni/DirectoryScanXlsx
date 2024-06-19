@@ -71,7 +71,7 @@ print(f"Количество файлов ДТ: {dt_count}")
 print(f"Файл ESD_DT.xlsx был создан в директории: {save_path}")
 
 # Ожидание 3 секунды перед закрытием
-time.sleep(3)
+time.sleep(4)
 
 # Закрытие скрипта
 sys.exit()
