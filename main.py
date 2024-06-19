@@ -1,6 +1,8 @@
 import os
 import re
 import pandas as pd
+import time  # Для сна
+import sys   # Для закрытия скрипта
 
 # Чтение путей из файла path.txt
 with open('path.txt', 'r') as file:
@@ -59,3 +61,17 @@ df_sorted = df_grouped.sort_values('Folder Number')
 # Сохранение в Excel файл
 output_file_path = os.path.join(save_path, "ESD_DT.xlsx")
 df_sorted.to_excel(output_file_path, index=False)
+
+# Вычислить количество уникальных файлов ДТ
+dt_count = df['GTD Number'].dropna().nunique()
+
+# Печать необходимых данных
+print("Номера ЭСД и ДТ выгружены")
+print(f"Количество файлов ДТ: {dt_count}")
+print(f"Файл ESD_DT.xlsx был создан в директории: {save_path}")
+
+# Ожидание 3 секунды перед закрытием
+time.sleep(3)
+
+# Закрытие скрипта
+sys.exit()
