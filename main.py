@@ -1,8 +1,8 @@
 import os
 import re
 import pandas as pd
-import time  # Для сна
-import sys   # Для закрытия скрипта
+import time
+import sys
 
 # Чтение путей из файла path.txt
 with open('path.txt', 'r') as file:
@@ -13,8 +13,12 @@ with open('path.txt', 'r') as file:
 # Инициализация списка для хранения данных
 data = []
 
-# Регулярное выражение для поиска номера папки
-folder_number_pattern = re.compile(r'\d+')
+# Регулярное выражение для извлечения номера папки
+folder_number_pattern = re.compile(r'^\d+')
+
+# Регулярное выражение для определения файлов ЭСД и GTD
+esd_pattern = re.compile(r'^([\w-]+)\.pdf$', re.IGNORECASE)  # ЭСД: любой PDF файл
+gtd_pattern = re.compile(r'^GTD_(\d+)_(\d+)_(\d+)\.pdf$', re.IGNORECASE)  # GTD: формат GTD_
 
 # Проход по всем папкам в заданной директории
 for folder_name in os.listdir(source_path):
@@ -22,56 +26,56 @@ for folder_name in os.listdir(source_path):
 
     # Проверка на то, что это папка
     if os.path.isdir(folder_path):
-        # Извлечение только номера папки
+        # Извлечение номера папки
         folder_number_match = folder_number_pattern.search(folder_name)
         if folder_number_match:
-            folder_number = folder_number_match.group()
+            folder_number = folder_number_match.group()  # Только номер папки
         else:
             continue  # Пропустить, если номер папки не найден
 
-        has_esd_or_gtd = False  # Флаг для проверки наличия файлов ЭСД или GTD
+        esd_numbers = []  # Список для номеров ЭСД
+        gtd_numbers = []  # Список для номеров GTD
 
         # Проход по всем файлам в папке
         for file_name in os.listdir(folder_path):
-            if file_name.startswith("ЭСД #"):
-                esd_number = file_name.replace("ЭСД #", "").split('.')[0]  # Удаление "ЭСД #" и любых расширений файла
-                data.append([folder_number, esd_number, None])
-                has_esd_or_gtd = True
-            elif file_name.startswith("GTD_"):
-                gtd_number = file_name.replace("GTD_", "").replace("_", "/").split('.')[
-                    0]  # Удаление "GTD_" и любого расширения файла
-                data.append([folder_number, None, gtd_number])
-                has_esd_or_gtd = True
+            # Проверка на ЭСД
+            esd_match = esd_pattern.match(file_name)
+            if esd_match and not file_name.startswith("GTD_"):  # Исключаем файлы GTD
+                esd_numbers.append(esd_match.group(1))  # Добавляем имя файла без расширения
+                continue
 
-        # Если файлов ЭСД и GTD не найдено, добавить запись с пустыми значениями
-        if not has_esd_or_gtd:
-            data.append([folder_number, None, None])
+            # Проверка на GTD
+            gtd_match = gtd_pattern.match(file_name)
+            if gtd_match:
+                gtd_formatted = f"{gtd_match.group(1)}/{gtd_match.group(2)}/{gtd_match.group(3)}"
+                gtd_numbers.append(gtd_formatted)
+                continue
+
+        # Добавить данные в список
+        data.append([
+            int(folder_number),  # Конвертируем номер папки в int для сортировки
+            ', '.join(esd_numbers) if esd_numbers else None,
+            ', '.join(gtd_numbers) if gtd_numbers else None
+        ])
 
 # Создание DataFrame
 df = pd.DataFrame(data, columns=["Folder Number", "ЭСД Number", "GTD Number"])
 
-# Группировка данных для объединения всех значений ЭСД и GTD для одной папки
-df_grouped = df.groupby("Folder Number").agg({'ЭСД Number': lambda x: ', '.join(filter(None, x)),
-                                              'GTD Number': lambda x: ', '.join(filter(None, x))}).reset_index()
-
-# Преобразование 'Folder Number' в численный тип данных для сортировки и сортировка
-df_grouped['Folder Number'] = df_grouped['Folder Number'].astype(int)
-df_sorted = df_grouped.sort_values('Folder Number')
+# Сортировка по возрастанию номера папки
+df_sorted = df.sort_values('Folder Number')
 
 # Сохранение в Excel файл
 output_file_path = os.path.join(save_path, "ESD_DT.xlsx")
 df_sorted.to_excel(output_file_path, index=False)
 
-# Вычислить количество уникальных файлов ДТ
-dt_count = df['GTD Number'].dropna().nunique()
+# Подсчёт количества уникальных GTD
+dt_count = df['GTD Number'].apply(lambda x: len(x.split(', ')) if x else 0).sum()
 
-# Печать необходимых данных
+# Печать информации
 print("Номера ЭСД и ДТ выгружены")
-print(f"Количество файлов ДТ: {dt_count}")
+print(f"Количество файлов GTD: {dt_count}")
 print(f"Файл ESD_DT.xlsx был создан в директории: {save_path}")
 
-# Ожидание 3 секунды перед закрытием
+# Ожидание 4 секунды перед завершением
 time.sleep(4)
-
-# Закрытие скрипта
 sys.exit()
