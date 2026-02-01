@@ -39,7 +39,10 @@ for folder_name in os.listdir(source_path):
         gtd_numbers = []
 
         for file_name in os.listdir(folder_path):
-            if esd_pattern.match(file_name) and not file_name.startswith("GTD_"):
+            # ЭСД: PDF с ровно 4 дефисами в названии (без расширения)
+            name_without_ext = file_name[:-4] if file_name.lower().endswith('.pdf') else ''
+            if (esd_pattern.match(file_name) and not file_name.startswith("GTD_")
+                    and name_without_ext.count('-') == 4):
                 esd_numbers.append(file_name[:-4])
 
             gtd_match = gtd_pattern.match(file_name)
